@@ -7,8 +7,9 @@ import { HackathonModal } from './components/HackathonModal';
 import { SavedHackathonsDrawer } from './components/SavedHackathonsDrawer';
 import { NotificationModal } from './components/NotificationModal';
 import { FreeSourcesSection } from './components/FreeSourcesSection';
+import { UpcomingHackathonsHub } from './components/UpcomingHackathonsHub';
 import { Hackathon, DailyDigest, HackathonCategory, HackathonFormat } from './types';
-import { Sparkles, RefreshCw, AlertCircle, Compass, Search } from 'lucide-react';
+import { Sparkles, RefreshCw, AlertCircle, Compass, Search, Rocket, ListFilter } from 'lucide-react';
 
 export default function App() {
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
@@ -17,6 +18,9 @@ export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Active view tab: 'upcoming' | 'directory'
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'directory'>('upcoming');
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -181,6 +185,12 @@ export default function App() {
     ).length;
   }, [hackathons]);
 
+  const upcomingCount = useMemo(() => {
+    return hackathons.filter(
+      (h) => h.status === 'upcoming' || (h.daysLeftToRegister !== undefined && h.daysLeftToRegister > 0)
+    ).length;
+  }, [hackathons]);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
       {/* Toast popup */}
@@ -198,6 +208,9 @@ export default function App() {
         savedCount={savedHackathons.length}
         onOpenSaved={() => setIsSavedDrawerOpen(true)}
         onOpenNotifications={() => setIsNotificationModalOpen(true)}
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        upcomingCount={upcomingCount}
       />
 
       {/* Main Container */}
@@ -210,20 +223,42 @@ export default function App() {
           totalPrizePoolEstimated="$450,000+"
         />
 
-        {/* Filter and Search Bar */}
-        <FilterBar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
-          selectedFormat={selectedFormat}
-          onSelectFormat={setSelectedFormat}
-          selectedStatus={selectedStatus}
-          onSelectStatus={setSelectedStatus}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          totalCount={filteredHackathons.length}
-        />
+        {/* View Mode Switcher (Upcoming Radar vs All Directory) */}
+        <div className="flex items-center justify-between pb-2 mb-6 border-b border-slate-800/80">
+          <div className="flex items-center space-x-2">
+            <button
+              id="switch-to-upcoming-view-btn"
+              onClick={() => setActiveTab('upcoming')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all ${
+                activeTab === 'upcoming'
+                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                  : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+              }`}
+            >
+              <Rocket className="w-3.5 h-3.5" />
+              <span>Upcoming Hackathons Radar</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === 'upcoming' ? 'bg-slate-950/25 text-slate-950' : 'bg-slate-800 text-emerald-400'}`}>
+                {upcomingCount}
+              </span>
+            </button>
+
+            <button
+              id="switch-to-directory-view-btn"
+              onClick={() => setActiveTab('directory')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all ${
+                activeTab === 'directory'
+                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                  : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+              }`}
+            >
+              <ListFilter className="w-3.5 h-3.5" />
+              <span>All Competitions Directory</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === 'directory' ? 'bg-slate-950/25 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
+                {hackathons.length}
+              </span>
+            </button>
+          </div>
+        </div>
 
         {/* Error Alert if any */}
         {errorMessage && (
@@ -241,65 +276,92 @@ export default function App() {
           </div>
         )}
 
-        {/* Results Count & Active Status */}
-        <div className="flex items-center justify-between mb-4 text-xs text-slate-400">
-          <div>
-            Showing <strong className="text-slate-200">{filteredHackathons.length}</strong> free hackathons
-            {selectedCategory !== 'all' && <span> in {selectedCategory}</span>}
-          </div>
-          <div className="flex items-center space-x-1.5 text-emerald-400 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>100% Free Entry Verified</span>
-          </div>
-        </div>
-
-        {/* Hackathon Cards Grid */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 py-12 text-center">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div
-                key={i}
-                className="h-64 rounded-2xl bg-slate-900/40 border border-slate-800/60 animate-pulse p-6 flex flex-col justify-between"
-              >
-                <div className="space-y-3">
-                  <div className="h-4 bg-slate-800 rounded w-1/3" />
-                  <div className="h-6 bg-slate-800 rounded w-3/4" />
-                  <div className="h-4 bg-slate-800 rounded w-full" />
-                </div>
-                <div className="h-10 bg-slate-800/80 rounded" />
-              </div>
-            ))}
-          </div>
-        ) : filteredHackathons.length === 0 ? (
-          <div className="text-center py-16 px-4 bg-slate-900/30 rounded-2xl border border-slate-800">
-            <Compass className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-            <h3 className="text-base font-bold text-slate-200 mb-1">No Hackathons Match Your Filters</h3>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto mb-4 leading-relaxed">
-              We couldn't find any events matching your current search or category selections.
-            </p>
-            <button
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedCategory('all');
-                setSelectedFormat('all');
-                setSelectedStatus('all');
-              }}
-              className="px-4 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 transition-colors"
-            >
-              Reset All Filters
-            </button>
-          </div>
+        {/* Render View Based on activeTab */}
+        {activeTab === 'upcoming' ? (
+          <UpcomingHackathonsHub
+            hackathons={hackathons}
+            savedHackathons={savedHackathons}
+            onToggleSave={handleToggleSave}
+            onOpenDetails={(h) => setActiveModalHackathon(h)}
+          />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredHackathons.map((hackathon) => (
-              <HackathonCard
-                key={hackathon.id}
-                hackathon={hackathon}
-                isSaved={savedHackathons.some((h) => h.id === hackathon.id)}
-                onToggleSave={handleToggleSave}
-                onOpenDetails={(h) => setActiveModalHackathon(h)}
-              />
-            ))}
+          <div>
+            {/* Filter and Search Bar */}
+            <FilterBar
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              selectedCategory={selectedCategory}
+              onSelectCategory={setSelectedCategory}
+              selectedFormat={selectedFormat}
+              onSelectFormat={setSelectedFormat}
+              selectedStatus={selectedStatus}
+              onSelectStatus={setSelectedStatus}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              totalCount={filteredHackathons.length}
+            />
+
+            {/* Results Count & Active Status */}
+            <div className="flex items-center justify-between mb-4 text-xs text-slate-400">
+              <div>
+                Showing <strong className="text-slate-200">{filteredHackathons.length}</strong> free hackathons
+                {selectedCategory !== 'all' && <span> in {selectedCategory}</span>}
+              </div>
+              <div className="flex items-center space-x-1.5 text-emerald-400 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>100% Free Entry Verified</span>
+              </div>
+            </div>
+
+            {/* Hackathon Cards Grid */}
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 py-12 text-center">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div
+                    key={i}
+                    className="h-64 rounded-2xl bg-slate-900/40 border border-slate-800/60 animate-pulse p-6 flex flex-col justify-between"
+                  >
+                    <div className="space-y-3">
+                      <div className="h-4 bg-slate-800 rounded w-1/3" />
+                      <div className="h-6 bg-slate-800 rounded w-3/4" />
+                      <div className="h-4 bg-slate-800 rounded w-full" />
+                    </div>
+                    <div className="h-10 bg-slate-800/80 rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : filteredHackathons.length === 0 ? (
+              <div className="text-center py-16 px-4 bg-slate-900/30 rounded-2xl border border-slate-800">
+                <Compass className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                <h3 className="text-base font-bold text-slate-200 mb-1">No Hackathons Match Your Filters</h3>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto mb-4 leading-relaxed">
+                  We couldn't find any events matching your current search or category selections.
+                </p>
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedCategory('all');
+                    setSelectedFormat('all');
+                    setSelectedStatus('all');
+                  }}
+                  className="px-4 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 transition-colors"
+                >
+                  Reset All Filters
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredHackathons.map((hackathon) => (
+                  <HackathonCard
+                    key={hackathon.id}
+                    hackathon={hackathon}
+                    isSaved={savedHackathons.some((h) => h.id === hackathon.id)}
+                    onToggleSave={handleToggleSave}
+                    onOpenDetails={(h) => setActiveModalHackathon(h)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 

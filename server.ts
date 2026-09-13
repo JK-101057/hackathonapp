@@ -473,6 +473,87 @@ app.get('/api/hackathons', async (req, res) => {
   }
 });
 
+// POST /api/upcoming-scout - AI Scout tailored recommendation of upcoming hackathons
+app.post('/api/upcoming-scout', async (req, res) => {
+  try {
+    const { prompt, category } = req.body || {};
+    const ai = getAi();
+
+    // Get current hackathons from cache or baseline
+    const activeList = cachedHackathons?.data?.hackathons || BASELINE_HACKATHONS;
+    const upcomingList = activeList.filter(
+      (h: any) => h.status === 'upcoming' || (h.daysLeftToRegister && h.daysLeftToRegister > 0)
+    );
+
+    if (!ai) {
+      // Free fallback recommendations
+      const topUpcoming = upcomingList.slice(0, 3);
+      return res.json({
+        summary: `There are ${upcomingList.length} upcoming hackathons actively accepting free registrations. Top upcoming opportunities include ${topUpcoming.map((h: any) => h.title).join(', ')}.`,
+        recommendations: topUpcoming.map((h: any) => ({
+          id: h.id,
+          title: h.title,
+          organizer: h.organizer,
+          prizePool: h.prizePool,
+          daysLeft: h.daysLeftToRegister,
+          whyJoin: `Excellent upcoming opportunity for ${h.categoryLabel || h.category} builders with 100% free entry and ${h.prizePool}.`,
+          prepTip: `Assemble a 2-4 person team early and review the theme on ${h.organizer}.`,
+        })),
+        sourcesCount: upcomingList.length,
+      });
+    }
+
+    const hackathonContext = upcomingList.map((h: any) => 
+      `- [ID: ${h.id}] "${h.title}" organized by ${h.organizer}. Category: ${h.categoryLabel}. Dates: ${h.startDate} to ${h.endDate}. Registration Deadline: ${h.registrationDeadline} (${h.daysLeftToRegister} days left). Prizes: ${h.prizePool}. Format: ${h.format} (${h.location}). Tags: ${h.tags?.join(', ')}.`
+    ).join('\n');
+
+    const scoutPrompt = `You are the Upcoming Hackathon Scout. The user wants to know about upcoming hackathons.
+User request / preference: "${prompt || 'Tell me about the best upcoming hackathons to register for right now'}"
+Category focus: ${category || 'All upcoming fields'}
+
+Available upcoming free hackathons in the live database:
+${hackathonContext}
+
+Analyze these upcoming hackathons and generate a tailored response as a raw JSON object with:
+{
+  "summary": "2-3 sentences high-level outlook of upcoming hackathons matching their interest, start dates, and key opportunities.",
+  "recommendations": [
+    {
+      "id": "hackathon id from list above",
+      "title": "Title",
+      "organizer": "Organizer",
+      "prizePool": "Prize pool",
+      "daysLeft": number,
+      "whyJoin": "1-2 punchy sentences why this upcoming hackathon is uniquely valuable.",
+      "prepTip": "Actionable tip on how to prepare before it starts (tech stack to practice, teammates, or starter kits)."
+    }
+  ]
+}
+Pick the top 2-4 most relevant upcoming events. Output ONLY valid JSON, no markdown formatting.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: scoutPrompt,
+      config: {
+        temperature: 0.3,
+      },
+    });
+
+    let raw = (response.text || '').trim();
+    if (raw.startsWith('```json')) raw = raw.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    else if (raw.startsWith('```')) raw = raw.replace(/^```\s*/, '').replace(/\s*```$/, '');
+
+    const parsed = JSON.parse(raw);
+    res.json(parsed);
+  } catch (err: any) {
+    console.error('[API] /api/upcoming-scout error:', err);
+    res.status(500).json({
+      error: 'Failed to generate upcoming scout analysis',
+      message: err?.message,
+    });
+  }
+});
+
 // POST /api/hackathons/refresh - Explicitly force a live scan
 app.post('/api/hackathons/refresh', async (req, res) => {
   try {

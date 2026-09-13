@@ -8,6 +8,9 @@ interface HeaderProps {
   savedCount: number;
   onOpenSaved: () => void;
   onOpenNotifications: () => void;
+  activeTab: 'upcoming' | 'directory';
+  onSelectTab: (tab: 'upcoming' | 'directory') => void;
+  upcomingCount: number;
 }
 
 export function Header({
@@ -17,6 +20,9 @@ export function Header({
   savedCount,
   onOpenSaved,
   onOpenNotifications,
+  activeTab,
+  onSelectTab,
+  upcomingCount,
 }: HeaderProps) {
   const [copiedNotification, setCopiedNotification] = useState(false);
 
@@ -31,7 +37,7 @@ export function Header({
   };
 
   return (
-    <header id="app-header" className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 text-white">
+    <header id="app-header" className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Logo and Status */}
         <div className="flex items-center space-x-3">
@@ -50,6 +56,36 @@ export function Header({
               Daily live net scans across Devpost, MLH, Kaggle, and open web
             </p>
           </div>
+        </div>
+
+        {/* Center View Selector Tabs */}
+        <div className="hidden md:flex items-center space-x-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+          <button
+            id="tab-upcoming-btn"
+            onClick={() => onSelectTab('upcoming')}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors ${
+              activeTab === 'upcoming'
+                ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>🚀 Upcoming Radar</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${activeTab === 'upcoming' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-emerald-400'}`}>
+              {upcomingCount}
+            </span>
+          </button>
+
+          <button
+            id="tab-directory-btn"
+            onClick={() => onSelectTab('directory')}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors ${
+              activeTab === 'directory'
+                ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>Directory (All)</span>
+          </button>
         </div>
 
         {/* Action Controls */}
