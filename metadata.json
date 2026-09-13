@@ -1,0 +1,6 @@
+{
+  "name": "Daily Hackathon Tracker",
+  "description": "Daily live updates on hackathons of all kinds gathered from across the live web with zero cost or subscription.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
